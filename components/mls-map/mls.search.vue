@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { MglCustomControl } from "@indoorequal/vue-maplibre-gl";
+import { MglCustomControl, useMap } from "@indoorequal/vue-maplibre-gl";
 import { debounce, capitalize } from "lodash";
+import { isLatLonText, stringToLocation, flyToMarker } from "~/utils/helper";
+import * as maplibre from "maplibre-gl";
 
+const { map } = useMap();
 const state = useState<{
   loading: boolean;
   search: string;
@@ -17,9 +20,10 @@ const state = useState<{
 const config = useRuntimeConfig();
 const apiDomain = config.public.apiDomain;
 const { $api } = useNuxtApp();
+const pingMarker = ref<maplibre.Marker | null>(null);
 
 const mapResults = (results: Record<string, string>[]) => {
-  return results.map(
+  return results?.map(
     ({
       com_name = "",
       dis_name = "",
@@ -53,8 +57,17 @@ const mapResults = (results: Record<string, string>[]) => {
   );
 };
 
+const onSubmit = async () => {
+  const search = state.value.search;
+  if (isLatLonText(search)) {
+    const location = stringToLocation(search);
+    pingMarker.value = flyToMarker(location, map);
+  }
+};
+
 const handleSearch = debounce(async (query: string) => {
   state.value.loading = true;
+  state.value.search = query;
   try {
     const { data } = await $api<{ data: Record<string, string>[] }>(
       `${apiDomain}/2024-06/places/full-text-search`,
@@ -96,6 +109,7 @@ const onClick = async (item: Record<string, unknown>) => {
 const onClear = () => {
   state.value.results = [];
   state.value.adminGeoJson = null;
+  pingMarker.value?.remove();
 };
 </script>
 
@@ -122,6 +136,7 @@ const onClear = () => {
           no-filter
           @update:search="handleSearch"
           @click:clear="onClear"
+          @keydown.enter="onSubmit"
         >
           <template v-slot:item="{ item, index, props }">
             <v-list-item
