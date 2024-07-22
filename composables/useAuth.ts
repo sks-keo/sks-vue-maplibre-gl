@@ -26,7 +26,7 @@ export const useAuth = () => {
           Authorization: `Basic ${btoa(`${email}:${password}`)}`,
           "Content-Type": "application/json; charset=UTF-8",
         },
-        credentials: "include",
+        // credentials: "include",
       }
     );
     setCookie(data.token);
